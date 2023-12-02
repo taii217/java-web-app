@@ -23,12 +23,13 @@ pipeline {
           script {
             def packageName = sh(script: "ls *.deb | awk -F/ '{print \$NF}'", returnStdout: true).trim()
             // Artifactory deployment configuration
+      
             rtUpload(
               serverId: SERVER_ID,
               spec: """{
                   "files": [
                       {
-                          "pattern": "${packageName}",
+                          "pattern": "path/to/your/artifacts/*",
                           "target": "${ARTIFACTORY_REPO}/",
                           "props": "build.name=${BUILD_TAG};build.number=${BUILD_NUMBER}"
                       }
