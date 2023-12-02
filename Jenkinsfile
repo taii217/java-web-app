@@ -12,7 +12,7 @@ pipeline {
       stage('Build Debian Package') {
         steps {
           script {
-            sh "fakeroot dpkg-deb --build ${DEB_PACKAGE_DIR}"
+            sh "dpkg-deb --build ${DEB_PACKAGE_DIR}"
           }
         }
       }
