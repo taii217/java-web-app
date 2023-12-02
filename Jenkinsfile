@@ -24,18 +24,31 @@ pipeline {
           script {
             def packageName = sh(script: "ls *.deb | awk -F/ '{print \$NF}'", returnStdout: true).trim()
             // Artifactory deployment configuration
+
+            rtBuildInfo (
+              captureEnv: true, 
+              buildName: BUILD_TAG, 
+              buildNumber: BUILD_NUMBER,
+              startDate: new Date(currentBuild.startTimeInMillis)
+            )
       
             rtUpload(
               serverId: SERVER_ID,
               spec: """{
                   "files": [
                       {
-                          "pattern": "path/to/your/artifacts/*",
+                          "pattern": "*.deb",
+                          "target": "${ARTIFACTORY_REPO}/",
+                          "props": "build.name=${BUILD_TAG};build.number=${BUILD_NUMBER}"
+                      },
+                      {
+                          "pattern": "pom.xml",
                           "target": "${ARTIFACTORY_REPO}/",
                           "props": "build.name=${BUILD_TAG};build.number=${BUILD_NUMBER}"
                       }
                   ]
               }""",
+              failNoOp: false,
               buildName: BUILD_NAME,
               buildNumber: BUILD_NUMBER
             )
@@ -54,7 +67,6 @@ pipeline {
         }
       }
     }
-
     post {
         success {
             echo 'Debian package successfully built and deployed to Artifactory.'
