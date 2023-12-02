@@ -5,6 +5,7 @@ pipeline {
     ARTIFACTORY_URL = 'https://taii217.jfrog.io/artifactory'
     ARTIFACTORY_REPO = 'hello-world-debian'
     ARTIFACTORY_USER = 'nguyenducphattai217@gmail.com'
+    SERVER_ID = 'taii217.jfrog.io'
     ARTIFACTORY_API_KEY = credentials('artifactory-access-token')
     PATH = "/opt/homebrew/bin:$PATH"
   }
@@ -22,21 +23,19 @@ pipeline {
           script {
             def packageName = sh(script: "ls *.deb | awk -F/ '{print \$NF}'", returnStdout: true).trim()
             // Artifactory deployment configuration
-            def buildInfo = Artifactory.newBuildInfo()
-            def server = Artifactory.server ARTIFACTORY_URL, ARTIFACTORY_USER, ARTIFACTORY_API_KEY
-      
-            artifactoryUpload(
-              server: server,
+            rtUpload(
+              serverId: SERVER_ID,
               spec: """{
                   "files": [
                       {
-                          "pattern": "path/to/your/artifacts/*",
+                          "pattern": "${packageName}",
                           "target": "${ARTIFACTORY_REPO}/",
                           "props": "build.name=${BUILD_TAG};build.number=${BUILD_NUMBER}"
                       }
                   ]
               }""",
-              buildInfo: buildInfo
+              buildName: 'debian-macos',
+              buildNumber: BUILD_NUMBER
             )
           }
         }
