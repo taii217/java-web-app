@@ -23,9 +23,10 @@ pipeline {
             def packageName = sh(script: "ls *.deb | awk -F/ '{print \$NF}'", returnStdout: true).trim()
             // Artifactory deployment configuration
             def buildInfo = Artifactory.newBuildInfo()
+            def server = Artifactory.server ARTIFACTORY_URL, ARTIFACTORY_USER, ARTIFACTORY_API_KEY
       
             artifactoryUpload(
-              serverId: 'hello-world-debian',
+              server: server,
               spec: """{
                   "files": [
                       {
