@@ -1,0 +1,5 @@
+Package: hello-world
+Version: 1.0
+Architecture: all
+Maintainer: Your Name <your.email@example.com>
+Description: Hello World Debian Package
