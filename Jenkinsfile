@@ -11,11 +11,13 @@ pipeline {
 
     stages {
       stage('prepare') {
-        script {
-          sh '''
-            sudo apt-get update
-            sudo apt-get install dpkg
-          '''
+        steps{
+          script {
+            sh '''
+              sudo apt-get update
+              sudo apt-get install dpkg
+            '''
+          }
         }
       }
       stage('Build Debian Package') {
