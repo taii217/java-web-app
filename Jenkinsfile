@@ -19,6 +19,17 @@ pipeline {
           }
         }
       }
+      stage('Upload Build Info and Artifact to Artifactory') {
+        steps {
+          script {
+              rtPublishBuildInfo (
+                  serverId: SERVER_ID,
+                  buildName: BUILD_NAME,
+                  buildNumber: BUILD_NUMBER
+              )
+          }
+        }
+      }
       stage('Deploy to Artifactory') {
         steps {
           script {
@@ -30,7 +41,7 @@ pipeline {
               spec: """{
                   "files": [
                       {
-                          "pattern": "path/to/your/artifacts/*",
+                          "pattern": "*.deb",
                           "target": "${ARTIFACTORY_REPO}/",
                           "props": "build.name=${BUILD_TAG};build.number=${BUILD_NUMBER}"
                       }
@@ -39,17 +50,6 @@ pipeline {
               buildName: BUILD_NAME,
               buildNumber: BUILD_NUMBER
             )
-          }
-        }
-      }
-      stage('Upload Build Info and Artifact to Artifactory') {
-        steps {
-          script {
-              rtPublishBuildInfo (
-                  serverId: SERVER_ID,
-                  buildName: BUILD_NAME,
-                  buildNumber: BUILD_NUMBER
-              )
           }
         }
       }
