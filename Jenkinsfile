@@ -14,8 +14,8 @@ pipeline {
         steps{
           script {
             sh '''
-              sudo apt-get update
-              sudo apt-get install dpkg
+              sudo -S apt-get update
+              sudo -S apt-get install dpkg
             '''
           }
         }
