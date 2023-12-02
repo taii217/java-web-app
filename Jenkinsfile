@@ -7,6 +7,7 @@ pipeline {
     ARTIFACTORY_USER = 'nguyenducphattai217@gmail.com'
     SERVER_ID = 'taii217.jfrog.io'
     ARTIFACTORY_API_KEY = credentials('artifactory-access-token')
+    BUILD_NAME = 'debian-macos'
     PATH = "/opt/homebrew/bin:$PATH"
   }
 
@@ -35,9 +36,20 @@ pipeline {
                       }
                   ]
               }""",
-              buildName: 'debian-macos',
+              buildName: BUILD_NAME,
               buildNumber: BUILD_NUMBER
             )
+          }
+        }
+      }
+      stage('Upload Build Info and Artifact to Artifactory') {
+        steps {
+          script {
+              rtPublishBuildInfo (
+                  serverId: SERVER_ID,
+                  buildName: BUILD_NAME,
+                  buildNumber: BUILD_NUMBER
+              )
           }
         }
       }
