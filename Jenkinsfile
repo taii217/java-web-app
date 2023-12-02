@@ -6,6 +6,7 @@ pipeline {
     ARTIFACTORY_REPO = 'hello-world-debian'
     ARTIFACTORY_USER = 'nguyenducphattai217@gmail.com'
     ARTIFACTORY_API_KEY = credentials('artifactory-access-token')
+    PATH = "/opt/homebrew/bin/dpkg-deb:$PATH"
   }
 
     stages {
