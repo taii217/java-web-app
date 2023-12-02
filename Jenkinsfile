@@ -6,10 +6,18 @@ pipeline {
     ARTIFACTORY_REPO = 'hello-world-debian'
     ARTIFACTORY_USER = 'nguyenducphattai217@gmail.com'
     ARTIFACTORY_API_KEY = credentials('artifactory-access-token')
-    PATH = "/opt/homebrew/bin/dpkg-deb:$PATH"
+    PATH = "/path/to/dpkg-deb:$PATH"
   }
 
     stages {
+      stage('prepare') {
+        script {
+          sh '''
+            sudo apt-get update
+            sudo apt-get install dpkg
+          '''
+        }
+      }
       stage('Build Debian Package') {
         steps {
           script {
