@@ -15,7 +15,7 @@ pipeline {
       stage('Build Debian Package') {
         steps {
           script {
-            sh "dpkg-deb --build ${DEB_PACKAGE_DIR}"
+            bat "dpkg-deb --build ${DEB_PACKAGE_DIR}"
           }
         }
       }
@@ -33,7 +33,7 @@ pipeline {
       stage('Deploy to Artifactory') {
         steps {
           script {
-            def packageName = sh(script: "ls *.deb | awk -F/ '{print \$NF}'", returnStdout: true).trim()
+            def packageName = bat(script: "ls *.deb | awk -F/ '{print \$NF}'", returnStdout: true).trim()
             // Artifactory deployment configuration
       
             rtUpload(
