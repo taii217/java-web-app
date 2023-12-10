@@ -9,6 +9,7 @@ pipeline {
     ARTIFACTORY_API_KEY = credentials('artifactory-access-token')
     BUILD_NAME = 'debian-macos'
     PATH = "/opt/homebrew/bin:$PATH"
+    BUILD_NUMBER='macos_1.1'
   }
 
     stages {
