@@ -13,11 +13,11 @@ pipeline {
             steps {
                 rtBuildInfo (
                     captureEnv: true, 
-                    buildName: BUILD_TAG, 
+                    buildName: STACK_TAG, 
                     buildNumber: BUILD_NUMBER,
                     startDate: new Date(currentBuild.startTimeInMillis)
                 )
-                sh 'env | sort'
+                // sh 'env | sort'
             }
         }
         stage('Build Debian Package') {
@@ -38,12 +38,12 @@ pipeline {
                                 {
                                     "pattern": "*.deb",
                                     "target": "${ARTIFACTORY_REPO}/${STACK_TAG}/${BUILD_NUMBER}/",
-                                    "props": "build.name=${BUILD_TAG};build.number=${BUILD_NUMBER}"
+                                    "props": "build.name=${STACK_TAG};build.number=${BUILD_NUMBER}"
                                 }
                             ]
                         }""",
                         failNoOp: false,
-                        buildName: BUILD_TAG,
+                        buildName: STACK_TAG,
                         buildNumber: BUILD_NUMBER
                     )
                 }
@@ -55,9 +55,10 @@ pipeline {
             script {
                 rtPublishBuildInfo (
                     serverId: SERVER_ID,
-                    buildName: BUILD_TAG,
+                    buildName: STACK_TAG,
                     buildNumber: BUILD_NUMBER
                 )
+                setProps()
             }
         }
         success {
@@ -68,4 +69,17 @@ pipeline {
             cleanWs deleteDirs: true
         }
     }
+}
+
+
+def setProps () {
+    def pattern  = "artifactory-build-info/${STACK_TAG}/${BUILD_NUMBER}-*.json"
+    def props = "STACK_TAG=${STACK_TAG};BUILD_NUMBER=${BUILD_NUMBER};"
+
+    rtSetProps (
+        serverId: SERVER_ID,
+        spec: "{\"files\":[{\"pattern\":\"${pattern}\",\"sortBy\":[\"created\"],\"sortOrder\":\"desc\",\"limit\":1}]}",
+        props: props,
+        failNoOp: true
+    ) 
 }
