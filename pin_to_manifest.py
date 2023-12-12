@@ -50,27 +50,6 @@ def get_packages(repo_name: str):
        })
       
 
-def pin_manifest(manifest, list_of_pkg: list, debs_list: dict):
-   updated_manifest = False
-   pinning_packages = set(list_of_pkg) & set([*debs_list])
-   log.info(f'Update version of package in {manifest}')
-   with open(manifest, 'r') as manifest_file:
-      lines = manifest_file.readlines()
-   with open(manifest, 'w') as manifest_file:
-      for line in lines:
-         match = re.match(r'^(\s*\w+:|)([^=\s]+)(\s*=\s*)(.+)$', line)
-
-         if match:
-            prefix, package, eq, ver = match.groups()
-            pin_version = package in pinning_packages and debs_list.get(package)
-            if pin_version and pin_version != ver:
-               log.info(f'updating pin for {package} from {ver} to {pin_version}')
-               line = prefix + package + eq + pin_version + '\n'
-               updated_manifest = True
-         manifest_file.write(line)
-
-   return updated_manifest
-
 
 def args_parse_env(args):
    args.repo = args.repo or os.environ['REPO_PATH']
