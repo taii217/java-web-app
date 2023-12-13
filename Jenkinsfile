@@ -1,11 +1,13 @@
 pipeline {
     agent any
     environment {
-        DEB_PACKAGE_DIR = 'hello-world-deb'
+        DEB_PACKAGE_DIR_1 = 'hello-world-deb'
+        DEB_PACKAGE_DIR_2 = 'hello-water'
         ARTIFACTORY_URL = 'https://taii217.jfrog.io/artifactory'
-        ARTIFACTORY_REPO = 'hello-world-debian'
+        ARTIFACTORY_REPO = 'libs-debian'
         SERVER_ID = 'taii217.jfrog.io'
-        STACK_TAG = "hello_world"
+        STACK_TAG = "my-debian"
+        GLOBAL_BUILD_ID = "${BUILD_NUMBER}"
         PATH = "/opt/homebrew/bin:$PATH"
     }
     stages {
@@ -14,7 +16,7 @@ pipeline {
                 rtBuildInfo (
                     captureEnv: true, 
                     buildName: STACK_TAG, 
-                    buildNumber: BUILD_NUMBER,
+                    buildNumber: GLOBAL_BUILD_ID,
                     startDate: new Date(currentBuild.startTimeInMillis)
                 )
                 // sh 'env | sort'
@@ -23,7 +25,16 @@ pipeline {
         stage('Build Debian Package') {
             steps {
                 script {
-                    sh "dpkg-deb --build ${DEB_PACKAGE_DIR}"
+                    sh '''
+                        dpkg-deb --build ${DEB_PACKAGE_DIR_1}
+                        version=$(dpkg-deb -f ${DEB_PACKAGE_DIR_1}.deb Version)
+                        mv ${DEB_PACKAGE_DIR_1}.deb ${DEB_PACKAGE_DIR_1}_\$version.deb
+                    '''
+                    sh '''
+                        dpkg-deb --build ${DEB_PACKAGE_DIR_2}
+                        version=$(dpkg-deb -f ${DEB_PACKAGE_DIR_2}.deb Version)
+                        mv ${DEB_PACKAGE_DIR_2}.deb ${DEB_PACKAGE_DIR_2}_\$version.deb
+                    '''
                 }
             }
         }
@@ -37,14 +48,13 @@ pipeline {
                             "files": [
                                 {
                                     "pattern": "*.deb",
-                                    "target": "${ARTIFACTORY_REPO}/${STACK_TAG}/${BUILD_NUMBER}/",
-                                    "props": "build.name=${STACK_TAG};build.number=${BUILD_NUMBER}"
+                                    "target": "${ARTIFACTORY_REPO}/${STACK_TAG}/${GLOBAL_BUILD_ID}/"
                                 }
                             ]
                         }""",
                         failNoOp: false,
                         buildName: STACK_TAG,
-                        buildNumber: BUILD_NUMBER
+                        buildNumber: GLOBAL_BUILD_ID
                     )
                 }
             }
@@ -56,7 +66,7 @@ pipeline {
                 rtPublishBuildInfo (
                     serverId: SERVER_ID,
                     buildName: STACK_TAG,
-                    buildNumber: BUILD_NUMBER
+                    buildNumber: GLOBAL_BUILD_ID
                 )
                 setProps()
             }
@@ -73,8 +83,8 @@ pipeline {
 
 
 def setProps () {
-    def pattern  = "artifactory-build-info/${STACK_TAG}/${BUILD_NUMBER}-*.json"
-    def props = "STACK_TAG=${STACK_TAG};BUILD_NUMBER=${BUILD_NUMBER};"
+    def pattern  = "artifactory-build-info/${STACK_TAG}/${GLOBAL_BUILD_ID}-*.json"
+    def props = "STACK_TAG=${STACK_TAG};GLOBAL_BUILD_ID=${GLOBAL_BUILD_ID};"
 
     rtSetProps (
         serverId: SERVER_ID,

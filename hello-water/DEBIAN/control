@@ -1,0 +1,5 @@
+Package: hello-water-1
+Version: 1.0
+Architecture: macos
+Maintainer: Tai Nguyen
+Description: Hello Water Debian Package

@@ -1,5 +1,5 @@
 Package: hello-world
 Version: 2.0
-Architecture: all
+Architecture: win11
 Maintainer: Tai Nguyen
 Description: Hello World Debian Package

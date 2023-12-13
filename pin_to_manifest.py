@@ -26,11 +26,12 @@ HEADERS = {
 def search_artifact(repo_name: str, filter_pattern: str):
     url = f'{ART_URL}/api/search/aql'
     filters = {
-        "repo":{
-            "$eq": repo_name
+        "repo":{"$match":"artifactory-build-info"},
+        "@STACK_TAG" : {
+            "$eq": "hello_world"
         },
-        "name":{
-            "$match": filter_pattern
+        "@BUILD_NUMB" : {
+            "$eq": "hello_world"
         }
     }
 
