@@ -1,87 +1,94 @@
 import argparse
 import boto3
-import gzip
 import json
 import os
-import re
-import shutil
-import sys
-import urllib.request
-import time
 import requests
 
 
-ART_API_TOKEN = os.environ['ARTIFACTORY_API_KEY'] or 'eyJ2ZXIiOiIyIiwidHlwIjoiSldUIiwiYWxnIjoiUlMyNTYiLCJraWQiOiJmRnk1RlNBdXhrZTJFWG9ZaVF6djJlRTRPNnBucVd4VGo1aXlYSjRoWk00In0.eyJzdWIiOiJqZmFjQDAxaGc2c2hlZHZ6YXEwMDJkZWtwam0wNjFqL3VzZXJzL2FjYyIsInNjcCI6ImFwcGxpZWQtcGVybWlzc2lvbnMvYWRtaW4iLCJhdWQiOiIqQCoiLCJpc3MiOiJqZmZlQDAwMCIsImlhdCI6MTcwMjMwODEyOSwianRpIjoiNjNmMzc0ZWQtMmZhZi00M2ZiLTk2NTEtYjEzZGUwOTE0Y2QyIn0.AqamRUrBCVd7zkb9nbGreF709ZKJCma7jomd0tiks1jK-SsoiFl2vSPQg39zte75yKachGWGV66FUVz7VLmM-bcz3mSp-6Eks-DzHJUJlOnTdGj7801OID3u_ZCEXxDyjx9CG7JUw6wHyNb86epCaK16yeCsfQF_vo3UDvXBnGbWIY8qtR2QXVy-yQ9lbN87UY_9O-Q7zOkRVu4luLpkrhly8VvrVITgpHldcOF-RxnlpyOXg0Zmz0GwIHfw_QqNl1bKsd9RKdeMTb1qI5LkJcPoRukwKe7V02J90CB-GyOtGiFcCsSNynT204g6vdWK40qJlC0MCQvpdRGCma4jEQ'
-workspace = os.environ['WORKSPACE']
-ART_URL = 'https://artifactory.menloinfra.com/artifactory'
-s3_bucket = 'menlosec-builds'
+ART_API_TOKEN = os.environ.get('ARTIFACTORY_API_KEY')
+ART_URL = 'https://taii217.jfrog.io/artifactory'
+s3_bucket = 'artifactory-taii217'
 s3_client = boto3.client('s3')
 
 HEADERS = {
-   'Authorization': ART_API_TOKEN,
-   'Content-Type': 'text/plain'
+   'Authorization': f"Bearer {ART_API_TOKEN}"
 }
 
+import re
 
-def search_artifact(repo_name: str, filter_pattern: str):
+def parse_filename(filename):
+    pattern = re.compile(r'^([a-zA-Z0-9_-]+)_([a-zA-Z0-9.-]+)\.([a-zA-Z0-9]+)$')
+    if not (match := pattern.match(filename)):
+        return None
+    name, version, ext = match[1], match[2], match[3]
+    return name, version, ext
+
+
+def search_builinfo(stack_tag: str, glbal_build_id: str):
     url = f'{ART_URL}/api/search/aql'
     filters = {
         "repo":{"$match":"artifactory-build-info"},
         "@STACK_TAG" : {
-            "$eq": "hello_world"
+            "$eq": stack_tag
         },
-        "@BUILD_NUMB" : {
-            "$eq": "hello_world"
+        "@GLOBAL_BUILD_ID" : {
+            "$eq": glbal_build_id
         }
     }
-
+    headers = {
+        'Content-Type': 'text/plain'
+    } | HEADERS
     body = f"items.find({json.dumps(filters)})"
+    response = requests.post(url, data=body, headers=headers)
+    return response.json() if response.status_code == 200 else {}
 
-    return requests.post(url, data=body, headers=HEADERS)
+def get_packages(stack_tag: str, glbal_build_id: str):
+    try:
+        build_infos = search_builinfo(stack_tag, glbal_build_id)
+        info = build_infos.get('results', {})[0]
+        if not info:
+            return False, 'build info not found!'
+        
+        build_info_path = f"{ART_URL}/{info['repo']}/{info['path']}/{info['name']}"
 
-def get_packages(repo_name: str):
-    repo_name = ''
-    artifacts = search_artifact(repo_name, "*").json()
-
-    packages = []
-    for artifact in artifacts.get('results'):
-       packages.append({
-          "name": artifact.get('name'),
-          "path": artifact.get('path')
-       })
-      
+        response = requests.get(build_info_path, headers=HEADERS)
+        return (True, response.json()) if response.status_code == 200 else (False, "File build info not found")
+    except Exception as e:
+        return False , str(e)
 
 
-def args_parse_env(args):
-   args.repo = args.repo or os.environ['REPO_PATH']
-   args.source_branch = args.source_branch or os.environ['SOURCE_BRANCH']
-   args.os_version = args.os_version or os.environ['OS_VERSION']
-   args.pinned_branch = args.pinned_branch or os.environ['PINNED_BRANCH']
-   args.cherry_pick = args.cherry_pick or os.environ.get('CHERRY_PICK_BRANCH', '')
-   args.build_id = args.build_id or os.environ['GLOBAL_BUILD_ID']
-   args.stack_tag = args.stack_tag or os.environ['STACK_TAG']
-   args.jenkins_host = args.jenkins_host or os.environ['JENKINS_HOST']
-   args.package_type = args.package_type or os.environ['PACKAGE_TYPE']
-   return args
+
+def pin_to_manifest_file(build_info_data: dict, stack_tag: str):
+    results = []
+    try:
+        artifacts = build_info_data.get('modules')[0].get("artifacts")
+        for artifact in artifacts:
+            name, version, ext = parse_filename(artifact.get("name"))
+            results.append(f"{name}=={version}")
+
+        # public data
+        s3_client.put_object(Bucket=s3_bucket, Key=f"{stack_tag}.manifest", Body= "\n".join(results))
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
 
 def main():
-   parser = argparse.ArgumentParser(description='Pinning step')
-   parser.add_argument('--config')
-   parser.add_argument('--source-branch')
-   parser.add_argument('--os-version')
-   parser.add_argument('--repo')
-   parser.add_argument('--cherry-pick')
-   parser.add_argument('--pinned-branch')
-   parser.add_argument('--build-id')
-   parser.add_argument('--stack-tag')
-   parser.add_argument('--jenkins-host')
-   parser.add_argument('--package-type')
+    parser = argparse.ArgumentParser(description='Pinning step')
+    parser.add_argument('--global-build-id')
+    parser.add_argument('--stack-tag')
 
-   args = parser.parse_args()
-   args = args_parse_env(args)
+    args = parser.parse_args()
 
+    success, build_info_data = get_packages(args.stack_tag, args.global_build_id)
+    if not success:
+        print("pin to manifest: get build info fail")
+        return 
+    if not pin_to_manifest_file(build_info_data, args.stack_tag):
+        print("pin to manifest: failed")
+    return "pin to manifest: success"
 
 
 if __name__ == '__main__':
-   main()
+    main()

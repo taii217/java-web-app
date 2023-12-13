@@ -3,6 +3,7 @@ pipeline {
     environment {
         DEB_PACKAGE_DIR_1 = 'hello-world-deb'
         DEB_PACKAGE_DIR_2 = 'hello-water'
+        ARTIFACTORY_API_KEY = credentials('artifactory-access-token')
         ARTIFACTORY_URL = 'https://taii217.jfrog.io/artifactory'
         ARTIFACTORY_REPO = 'libs-debian'
         SERVER_ID = 'taii217.jfrog.io'
@@ -81,6 +82,9 @@ pipeline {
     }
 }
 
+def pin_to_manifest(){
+    sh "python3 -m pin_to_manifest --global-build-id=${GLOBAL_BUILD_ID} --stack-tag=${STACK_TAG}"
+}
 
 def setProps () {
     def pattern  = "artifactory-build-info/${STACK_TAG}/${GLOBAL_BUILD_ID}-*.json"
@@ -92,4 +96,6 @@ def setProps () {
         props: props,
         failNoOp: true
     ) 
+    pin_to_manifest()
 }
+
